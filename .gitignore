@@ -6,9 +6,11 @@ __pycache__/
 venv/
 *.egg-info/
 
-# Large model weights (download separately)
+# Model weights
 *.pt
 !models/.gitkeep
+!yolov8n.pt
+!mobile_sam.pt
 
 # Data & videos
 # data/videos/ — included in repo
@@ -33,5 +35,5 @@ runs/
 .DS_Store
 Thumbs.db
 *.log
-yolov8n.pt
-mobile_sam.pt
+# yolov8n.pt — included in repo
+# mobile_sam.pt — included in repo
