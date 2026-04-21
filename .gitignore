@@ -10,8 +10,8 @@ venv/
 *.pt
 !models/.gitkeep
 
-# Data & videos (too large for git)
-data/videos/
+# Data & videos
+# data/videos/ — included in repo
 data/frames/
 data/frames_tomnho/
 data/labeled_tomnho/images/
