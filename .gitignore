@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Large model weights (download separately)
+*.pt
+!models/.gitkeep
+
+# Data & videos (too large for git)
+data/videos/
+data/frames/
+data/frames_tomnho/
+data/labeled_tomnho/images/
+data/labeled_tomnho/labels/
+data/labeled_tomnho/review/
+
+# Outputs (generated files)
+outputs/*.mp4
+outputs/*.jpg
+outputs/*.json
+
+# Keep the proposal document
+!outputs/DeHeus_SmartShrimp_Proposal_2026-04.docx
+
+# Training runs (large)
+runs/
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log
+yolov8n.pt
+mobile_sam.pt

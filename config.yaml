@@ -1,0 +1,31 @@
+classical:
+  # Contour size range in pixels — tune based on video resolution & shrimp size
+  min_contour_area: 2000
+  max_contour_area: 80000
+  # Gaussian blur before thresholding (must be odd)
+  blur_kernel: 11
+  # Adaptive threshold params — larger block_size groups shrimp body parts together
+  adaptive_block_size: 51
+  adaptive_c: 8
+  # Larger kernel merges fragmented body parts into one contour
+  morph_kernel_size: 9
+  # Centroid tracker: frames before a lost track is removed
+  max_disappeared: 40
+  # Centroid tracker: max pixel distance to match same shrimp across frames
+  max_distance: 80
+
+yolo:
+  # Path to trained model — place weights at models/best.pt after training
+  model_path: "models/best.pt"
+  confidence: 0.25
+  iou_threshold: 0.45
+  # "cpu" or "0" for GPU
+  device: "cpu"
+
+video:
+  # Process every N+1 frames (0 = every frame, 2 = every 3rd frame)
+  skip_frames: 1
+  # Resize input to this width before processing (keeps aspect ratio)
+  resize_width: 640
+  # Output directory for annotated videos and reports
+  output_dir: "outputs"
