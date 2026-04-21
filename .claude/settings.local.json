@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__fde33c9d-6bd0-46ce-b5d2-1f4c4977acbf__getConfluencePage",
+      "WebSearch",
+      "Bash(yt-dlp --version)",
+      "Bash(pip install *)",
+      "Bash(python -m pip install yt-dlp -q)",
+      "Bash(py --version)",
+      "Bash(py -m pip install yt-dlp -q)",
+      "PowerShell(python --version)",
+      "PowerShell(python -m pip install yt-dlp -q 2>&1)",
+      "PowerShell($env:PATH -split \";\" | Where-Object { $_ -match \"python|conda|pyenv\" })",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\TuMinhDoan\\\\AppData\\\\Local\\\\Programs\" -ErrorAction SilentlyContinue | Select-Object Name; Get-ChildItem \"C:\\\\Users\\\\TuMinhDoan\\\\.local\\\\bin\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"python|pip|yt-dlp\" })",
+      "PowerShell(node --version 2>$null)",
+      "PowerShell($env:PATH -split \";\")",
+      "PowerShell(uv --version)",
+      "PowerShell(Get-Process | Where-Object { $_.Name -match \"python\" } | Select-Object Id, Name, CPU, WorkingSet)",
+      "Bash(xargs tail *)",
+      "Bash(npm list *)",
+      "Bash(npm install *)",
+      "Bash(node generate_proposal.js)",
+      "Bash(python scripts/office/validate.py \"D:\\\\Infodation\\\\Claude\\\\Coding\\\\Source\\\\SmartShrimpCount\\\\outputs\\\\DeHeus_SmartShrimp_Proposal_2026-04.docx\")",
+      "Bash(py3 --version)",
+      "Read(//d/tmp/**)",
+      "Bash(cp \"D:\\\\Infodation\\\\Claude\\\\Coding\\\\Source\\\\SmartShrimpCount\\\\outputs\\\\DeHeus_SmartShrimp_Proposal_2026-04.docx\" proposal_check.zip)",
+      "Bash(unzip -l proposal_check.zip)",
+      "Bash(Get-Item \"D:\\\\Infodation\\\\Claude\\\\Coding\\\\Source\\\\SmartShrimpCount\\\\runs\\\\detect\\\\runs\\\\train\\\\shrimp-2\\\\results.csv\")",
+      "Bash(Select-Object LastWriteTime, Length)"
+    ]
+  }
+}
