@@ -58,7 +58,7 @@ pavg = round(float(np.mean(frame_counts)), 1)
 
 print()
 print("=" * 52)
-print("  SMART SHRIMP COUNT — tôm nhỏ (post-larvae)")
+print("  SMART SHRIMP COUNT -- Post-Larvae Shrimp (tom nho)")
 print("=" * 52)
 print(f"  Frames processed  : {len(frame_counts)}")
 print(f"  Avg visible/frame : {pavg}")
