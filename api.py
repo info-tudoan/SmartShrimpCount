@@ -155,6 +155,16 @@ async def count_shrimp(
 
         elapsed = round(time.time() - start_time, 1)
 
+        count_result = result["estimated_count"]
+        max_visible = result.get("max_visible", 0)
+
+        # Confidence score: ratio of max shrimp visible simultaneously
+        # to total estimated count. Higher = less track fragmentation = more reliable.
+        # Range 0.0-1.0 (e.g. 0.85 means at peak we saw 85% of counted shrimp at once)
+        confidence_score = round(
+            min(1.0, max_visible / max(count_result, 1)), 2
+        ) if count_result > 0 else 0.0
+
         return JSONResponse(
             status_code=200,
             content={
@@ -162,9 +172,10 @@ async def count_shrimp(
                 "filename": video.filename,
                 "shrimp_type": shrimp_type,
                 "method": method_used,
-                "estimated_count": result["estimated_count"],
+                "count_result": count_result,
+                "confidence_score": confidence_score,
                 "avg_visible_per_frame": result.get("avg_visible", 0),
-                "max_visible_per_frame": result.get("max_visible", 0),
+                "max_visible_per_frame": max_visible,
                 "frames_processed": result.get("frames_processed", 0),
                 "processing_time_seconds": elapsed,
             },
