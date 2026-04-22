@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+runs/
+data/frames*/
+data/labeled*/
+outputs/*.mp4
+outputs/*.jpg
+outputs/*.json
+.git/
+.claude/
+mobile_sam.pt
+yolov8n.pt
+scripts/
