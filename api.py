@@ -157,13 +157,16 @@ async def count_shrimp(
 
         count_result = result["estimated_count"]
         max_visible = result.get("max_visible", 0)
+        avg_visible = result.get("avg_visible", 0)
 
-        # Confidence score: ratio of max shrimp visible simultaneously
-        # to total estimated count. Higher = less track fragmentation = more reliable.
-        # Range 0.0-1.0 (e.g. 0.85 means at peak we saw 85% of counted shrimp at once)
+        # Confidence score: avg_visible / max_visible
+        # Measures detection stability across the whole video.
+        # High score = model consistently sees nearly all shrimp every frame → reliable count.
+        # Low score  = count spikes in a few frames only → result less trustworthy.
+        # e.g. avg=21.7, max=27 → 0.80 = "80% of frames show near-maximum shrimp count"
         confidence_score = round(
-            min(1.0, max_visible / max(count_result, 1)), 2
-        ) if count_result > 0 else 0.0
+            avg_visible / max(max_visible, 1), 2
+        ) if max_visible > 0 else 0.0
 
         return JSONResponse(
             status_code=200,
