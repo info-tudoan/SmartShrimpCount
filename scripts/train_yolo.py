@@ -16,7 +16,7 @@ import argparse
 from pathlib import Path
 
 
-def train(data_yaml, epochs=100, model_name="yolov8n.pt", imgsz=640, batch=16):
+def train(data_yaml, epochs=100, model_name="yolov8n.pt", imgsz=640, batch=8):
     try:
         from ultralytics import YOLO
     except ImportError:
@@ -34,13 +34,18 @@ def train(data_yaml, epochs=100, model_name="yolov8n.pt", imgsz=640, batch=16):
         project="runs/train",
         name="shrimp",
         save=True,
-        patience=25,
-        # Augmentations useful for shrimp in water
-        augment=True,
-        mosaic=1.0,
-        fliplr=0.5,
-        flipud=0.5,
-        degrees=45.0,
+        patience=30,
+        # CPU-optimised augmentations: fast transforms only.
+        # mosaic=0 because combining 4 images is very slow on CPU (~4x cost).
+        # The dataset already has diverse shrimp positions so mosaic is less critical.
+        mosaic=0.0,      # disabled — too slow on CPU
+        fliplr=0.5,      # horizontal flip (near-free)
+        flipud=0.5,      # vertical flip  (near-free)
+        hsv_h=0.015,     # hue jitter
+        hsv_s=0.7,       # saturation jitter — handles different water colours
+        hsv_v=0.4,       # brightness jitter
+        scale=0.5,       # random scale ±50%
+        translate=0.1,   # random translate ±10%
     )
 
     best_weights = Path(results.save_dir) / "weights" / "best.pt"
