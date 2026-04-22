@@ -29,7 +29,10 @@ def count_shrimp_yolo(video_path, config, output_path=None, show_preview=False):
         model_path = "yolov8n.pt"
 
     model = YOLO(model_path)
-    tracker = sv.ByteTrack()
+    # lost_track_buffer=90: keep lost tracks alive for ~3s at 30fps so
+    # shrimp that pass behind others can be re-associated instead of
+    # getting a new ID (reduces over-counting)
+    tracker = sv.ByteTrack(lost_track_buffer=90)
 
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
