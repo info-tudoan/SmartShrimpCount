@@ -206,6 +206,10 @@ async def count_shrimp_image(
         default=False,
         description="If true, returns annotated image instead of JSON",
     ),
+    conf: float = Form(
+        default=0.15,
+        description="YOLO confidence threshold (0.0-1.0). Default 0.15 — thấp hơn video vì không lo track fragmentation",
+    ),
 ):
     """
     Dem so tom trong 1 anh. Nhanh hon video (~2 giay).
@@ -258,7 +262,7 @@ async def count_shrimp_image(
 
             results = model(
                 frame,
-                conf=cfg["confidence"],
+                conf=conf,   # dùng conf từ request (default 0.15, thấp hơn video 0.25)
                 iou=cfg["iou_threshold"],
                 device=cfg.get("device", "cpu"),
                 verbose=False,
