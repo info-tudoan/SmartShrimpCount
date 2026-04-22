@@ -1,43 +1,47 @@
 """
 SmartShrimp Count — REST API
-POST /count  ->  Upload video, get shrimp count back
+POST /count        -> Upload video, get shrimp count
+POST /count-image  -> Upload image, get shrimp count (fast, single frame)
 
 Usage:
   uvicorn api:app --host 0.0.0.0 --port 8000
 
 Examples:
-  # Large juvenile shrimp (De Heus WhatsApp video) -> dùng shrimp_type=large
   curl -X POST http://localhost:8000/count \
-       -F "video=@whatsapp.mp4" \
-       -F "shrimp_type=large"
+       -F "video=@whatsapp.mp4" -F "shrimp_type=large"
 
-  # Tiny post-larvae shrimp -> dùng shrimp_type=tiny
-  curl -X POST http://localhost:8000/count \
-       -F "video=@tomnho.mp4" \
-       -F "shrimp_type=tiny"
+  curl -X POST http://localhost:8000/count-image \
+       -F "image=@frame.jpg" -F "shrimp_type=large"
 """
+import io
 import shutil
 import tempfile
 import time
 import yaml
+import numpy as np
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 app = FastAPI(
     title="SmartShrimp Count API",
     description="""
 ## AI-powered shrimp counting for De Heus Vietnam
 
-### Chọn đúng `shrimp_type` theo loại tôm:
+### Endpoints:
+| Endpoint | Input | Thời gian |
+|----------|-------|-----------|
+| `POST /count` | Video (mp4/avi/mov) | ~1–3 phút |
+| `POST /count-image` | Hình ảnh (jpg/png) | **~2 giây** |
 
-| shrimp_type | Loại tôm | Phương pháp | Thời gian |
-|-------------|----------|-------------|-----------|
-| `large` | Tôm giống lớn (>20px) | YOLO + ByteTrack | ~3–5 phút |
-| `tiny` | Tôm post-larvae nhỏ (<10px) | Classical CV | ~2 phút |
+### Chọn đúng `shrimp_type`:
+| shrimp_type | Loại tôm | Phương pháp |
+|-------------|----------|-------------|
+| `large` | Tôm giống lớn (>20px) | YOLO detection |
+| `tiny` | Tôm post-larvae nhỏ (<10px) | Classical CV |
 """,
-    version="1.1.0",
+    version="1.2.0",
 )
 
 # Config tuned cho tiny post-larvae shrimp
@@ -189,3 +193,147 @@ async def count_shrimp(
 
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+@app.post("/count-image")
+async def count_shrimp_image(
+    image: UploadFile = File(..., description="Image file (jpg, jpeg, png, bmp)"),
+    shrimp_type: str = Form(
+        default="large",
+        description="'large' — YOLO detection | 'tiny' — Classical CV",
+    ),
+    annotated: bool = Form(
+        default=False,
+        description="If true, returns annotated image instead of JSON",
+    ),
+):
+    """
+    Dem so tom trong 1 anh. Nhanh hon video (~2 giay).
+
+    - **large** -> YOLO detect tren 1 frame, tra ve so box phat hien duoc
+    - **tiny**  -> Classical CV (adaptive threshold + contour) tren 1 frame
+    - **annotated=true** -> tra ve anh JPG co ve box/contour thay vi JSON
+    """
+    if shrimp_type not in ("large", "tiny"):
+        raise HTTPException(
+            status_code=400,
+            detail="shrimp_type phai la 'large' hoac 'tiny'",
+        )
+
+    allowed_ext = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+    suffix = Path(image.filename or "image.jpg").suffix.lower()
+    if suffix not in allowed_ext:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Dinh dang '{suffix}' khong ho tro. Dung: {', '.join(allowed_ext)}",
+        )
+
+    try:
+        import cv2
+        contents = await image.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if frame is None:
+            raise HTTPException(status_code=400, detail="Khong doc duoc anh — file bi loi hoac khong phai anh hop le")
+
+        base_config = load_config()
+        start_time = time.time()
+
+        if shrimp_type == "large":
+            # ── YOLO single-frame detection ──────────────────────────────
+            from ultralytics import YOLO
+            cfg = base_config["yolo"]
+            vid_cfg = base_config["video"]
+            resize_w = vid_cfg.get("resize_width", 640)
+
+            model_path = cfg.get("model_path", "models/best.pt")
+            if not Path(model_path).exists():
+                model_path = "yolov8n.pt"
+            model = YOLO(model_path)
+
+            # Resize nếu cần
+            h, w = frame.shape[:2]
+            if resize_w and w != resize_w:
+                frame = cv2.resize(frame, (resize_w, int(h * resize_w / w)))
+
+            results = model(
+                frame,
+                conf=cfg["confidence"],
+                iou=cfg["iou_threshold"],
+                device=cfg.get("device", "cpu"),
+                verbose=False,
+            )
+            detections = results[0].boxes
+            count_result = len(detections) if detections is not None else 0
+            confidences = detections.conf.tolist() if detections is not None and len(detections) > 0 else []
+            avg_conf = round(float(np.mean(confidences)), 2) if confidences else 0.0
+            method_used = "yolo-single-frame"
+
+            if annotated:
+                # Vẽ bounding box lên ảnh
+                annotated_frame = results[0].plot()
+                label = f"Count: {count_result}  |  Conf: {avg_conf}"
+                cv2.putText(annotated_frame, label, (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
+        else:
+            # ── Classical CV single-frame ────────────────────────────────
+            tiny_config = build_tiny_config(base_config)
+            c_cfg = tiny_config["classical"]
+
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            blurred = cv2.GaussianBlur(gray, (c_cfg["blur_kernel"], c_cfg["blur_kernel"]), 0)
+            block = c_cfg["adaptive_block_size"]
+            thresh = cv2.adaptiveThreshold(
+                blurred, 255,
+                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY_INV,
+                block, c_cfg["adaptive_c"],
+            )
+            k = c_cfg["morph_kernel_size"]
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            valid = [c for c in contours
+                     if c_cfg["min_contour_area"] <= cv2.contourArea(c) <= c_cfg["max_contour_area"]]
+            count_result = len(valid)
+            avg_conf = 1.0
+            method_used = "classical-cv-single-frame"
+
+            if annotated:
+                annotated_frame = frame.copy()
+                cv2.drawContours(annotated_frame, valid, -1, (0, 255, 0), 2)
+                label = f"Count: {count_result}"
+                cv2.putText(annotated_frame, label, (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
+        elapsed = round(time.time() - start_time, 2)
+
+        # Trả về ảnh annotated nếu được yêu cầu
+        if annotated:
+            _, buf = cv2.imencode(".jpg", annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+            return StreamingResponse(
+                io.BytesIO(buf.tobytes()),
+                media_type="image/jpeg",
+                headers={"X-Count-Result": str(count_result),
+                         "X-Confidence-Score": str(avg_conf),
+                         "X-Processing-Time": str(elapsed)},
+            )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "filename": image.filename,
+                "shrimp_type": shrimp_type,
+                "method": method_used,
+                "count_result": count_result,
+                "confidence_score": avg_conf,
+                "processing_time_seconds": elapsed,
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
