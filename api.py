@@ -206,10 +206,6 @@ async def count_shrimp_image(
         default=False,
         description="If true, returns annotated image instead of JSON",
     ),
-    conf: float = Form(
-        default=0.15,
-        description="YOLO confidence threshold (0.0-1.0). Default 0.15 — thấp hơn video vì không lo track fragmentation",
-    ),
 ):
     """
     Dem so tom trong 1 anh. Nhanh hon video (~2 giay).
@@ -247,23 +243,18 @@ async def count_shrimp_image(
             # ── YOLO single-frame detection ──────────────────────────────
             from ultralytics import YOLO
             cfg = base_config["yolo"]
-            vid_cfg = base_config["video"]
-            resize_w = vid_cfg.get("resize_width", 640)
 
             model_path = cfg.get("model_path", "models/best.pt")
             if not Path(model_path).exists():
                 model_path = "yolov8n.pt"
             model = YOLO(model_path)
 
-            # Resize nếu cần
-            h, w = frame.shape[:2]
-            if resize_w and w != resize_w:
-                frame = cv2.resize(frame, (resize_w, int(h * resize_w / w)))
-
+            # Giữ resolution gốc (không resize xuống 640) để model thấy chi tiết tốt hơn.
+            # Dùng conf=0.10 (thấp hơn video 0.25) vì ảnh đơn không lo track fragmentation.
             results = model(
                 frame,
-                conf=conf,   # dùng conf từ request (default 0.15, thấp hơn video 0.25)
-                iou=cfg["iou_threshold"],
+                conf=0.12,
+                iou=0.35,   # tighter NMS: loại box chồng nhau tốt hơn
                 device=cfg.get("device", "cpu"),
                 verbose=False,
             )
