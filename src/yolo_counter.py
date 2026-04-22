@@ -29,7 +29,10 @@ def count_shrimp_yolo(video_path, config, output_path=None, show_preview=False):
         model_path = "yolov8n.pt"
 
     model = YOLO(model_path)
-    tracker = sv.ByteTrack()
+    tracker = sv.ByteTrack(
+        lost_track_buffer=60,   # giữ track "mất tích" lâu hơn (default 30)
+        minimum_matching_threshold=0.7,  # IoU cao hơn → ít nhầm track
+    )
 
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
@@ -108,12 +111,17 @@ def count_shrimp_yolo(video_path, config, output_path=None, show_preview=False):
         writer.release()
     cv2.destroyAllWindows()
 
+    # Dùng p90 của frame_counts làm estimated_count — ổn định hơn unique_ids
+    # vì unique_ids tăng theo tracking fragmentation
+    p90_visible = int(np.percentile(frame_counts, 90)) if frame_counts else 0
+    max_visible = int(max(frame_counts)) if frame_counts else 0
+
     return {
         "method": "yolo",
-        "estimated_count": len(unique_ids),
-        "max_visible": int(max(frame_counts)) if frame_counts else 0,
+        "estimated_count": p90_visible,          # ổn định, ít bị ảnh hưởng bởi tracking noise
+        "unique_track_ids": len(unique_ids),      # giữ lại để tham khảo
+        "max_visible": max_visible,
         "avg_visible": round(float(np.mean(frame_counts)), 1) if frame_counts else 0,
-        "unique_track_ids": len(unique_ids),
         "frames_processed": len(frame_counts),
         "total_frames": total_frames,
         "video_path": str(video_path),
