@@ -113,10 +113,14 @@ def count_shrimp_yolo(video_path, config, output_path=None, show_preview=False):
 
     max_visible = int(max(frame_counts)) if frame_counts else 0
 
+    # For shrimp-in-a-bag scenarios, shrimp never truly leave the scene.
+    # max_visible (peak simultaneous detections) is a better total-count
+    # estimate than unique_track_ids, which over-counts due to track
+    # fragmentation when shrimp occlude each other.
     return {
         "method": "yolo",
-        "estimated_count": len(unique_ids),   # tổng số cá thể khác nhau được track
-        "unique_track_ids": len(unique_ids),
+        "estimated_count": max_visible,        # peak simultaneous count ≈ total in bag
+        "unique_track_ids": len(unique_ids),   # kept for reference only
         "max_visible": max_visible,
         "avg_visible": round(float(np.mean(frame_counts)), 1) if frame_counts else 0,
         "frames_processed": len(frame_counts),
