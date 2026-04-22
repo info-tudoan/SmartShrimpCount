@@ -29,10 +29,7 @@ def count_shrimp_yolo(video_path, config, output_path=None, show_preview=False):
         model_path = "yolov8n.pt"
 
     model = YOLO(model_path)
-    tracker = sv.ByteTrack(
-        lost_track_buffer=60,   # giữ track "mất tích" lâu hơn (default 30)
-        minimum_matching_threshold=0.7,  # IoU cao hơn → ít nhầm track
-    )
+    tracker = sv.ByteTrack()
 
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
